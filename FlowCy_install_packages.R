@@ -39,7 +39,6 @@ if(install_packages){
   devtools::install_github("nolanlab/cytofCore")
   devtools::install_github("saeyslab/PeacoQC")
   remotes::install_github("saeyslab/FlowSOM_workshop")
-  install.packages("rstudioapi")
 }
 
 rm(list = ls())
