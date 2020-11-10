@@ -1,6 +1,6 @@
 rm(list = ls())
 
-install_packages <- FALSE
+install_packages <- TRUE
 
 if(!require(devtools)){
   BiocManager::install("devtools")
