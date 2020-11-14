@@ -4,7 +4,7 @@ rm(list = ls())
 # install cairo (brew install cairo)
 
 
-install_packages <- FALSE
+install_packages <- TRUE
 
 if(!require(devtools)){
   BiocManager::install("devtools")
@@ -43,7 +43,6 @@ if(install_packages){
   devtools::install_github("nolanlab/cytofCore")
   devtools::install_github("saeyslab/PeacoQC")
   remotes::install_github("saeyslab/FlowSOM_workshop")
-  install.packages("rstudioapi")
 }
 
 rm(list = ls())
