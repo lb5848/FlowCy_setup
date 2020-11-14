@@ -1,4 +1,8 @@
 rm(list = ls())
+# MacOS
+# install xquartz using homebrew (brew cask install xquartz)
+# install cairo (brew install cairo)
+
 
 install_packages <- FALSE
 
