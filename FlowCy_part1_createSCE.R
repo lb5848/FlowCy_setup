@@ -62,9 +62,15 @@ dir.create(workingDirPath)
 CSVfiles <- list.files(CSVdirPath, pattern = ".csv$", full = FALSE)
 fileName <- gsub(".csv", ".fcs", CSVfiles)
 
+# create sample_metadata.csv
+# 
+# fwrite(list(fileName), "sample_metadata.csv")
+
+
+
 convertCSVtoFCS <- function(CSVfiles, csvDirectory, csv2fcsDirectory, fileName){
   for(i in c(1:length(CSVfiles))){
-    data <- read.csv(paste(csvDirectory, CSVfiles[i], sep = "/"))
+    data <- fread(paste(csvDirectory, CSVfiles[i], sep = "/"))
     print(CSVfiles[i])
     print(fileName[i])
     cytofCore.write.FCS(as.matrix(data), 
@@ -74,5 +80,101 @@ convertCSVtoFCS <- function(CSVfiles, csvDirectory, csv2fcsDirectory, fileName){
 }
 
 convertCSVtoFCS(CSVfiles = CSVfiles, csvDirectory = CSVdirPath, csv2fcsDirectory = FCSdirPath, fileName = fileName)
+
+
+# Create flowSet from FCSfiles
+FCSfiles <- list.files(FCSdirPath, pattern = ".fcs$", full = FALSE)
+flowSet <- read.flowSet(files = FCSfiles, path = FCSdirPath, truncate_max_range = FALSE)
+colnames(flowSet)
+
+# prep sample_md
+sample_md <- fread(file = paste(PrimaryDirectory, "sample_metadata.csv", sep = "/"), header = TRUE)
+sample_md
+is.data.table(sample_md)
+sample_md[, sample_id := factor(sample_id)]
+sample_md[, condition := factor(condition, 
+                                levels = c("PB_HD", "PB_MGUS", "BM_MGUS", "PB_SMM", "BM_SMM", "PB_NDMM", "BM_NDMM"))]
+levels(sample_md$condition)
+colnames(sample_md)
+fwrite(sample_md, "sample_metadata.csv")
+
+# prep sample_md_PBvsBM for analysis of MILs vs PBLs
+sample_md_PBvsBM <- sample_md
+sample_md_PBvsBM[, condition := fifelse(grepl("PB", condition), "PB", "BM")]
+fwrite(sample_md_PBvsBM, "sample_md_PBvsBM.csv")
+# create panel_md.csv
+# fwrite(list(colnames(flowSet)), "panel_md.csv")
+
+panel_md <- fread(file = paste(PrimaryDirectory, "panel_md.csv", sep = "/"), header = TRUE)
+all(colnames(flowSet) == panel_md$fcs_colname)
+
+# preprocessing - QC
+
+setwd(workingDirPath)
+
+QC_dir <- "QC"
+if(!dir.exists(QC_dir)){
+  dir.create(QC_dir)
+  dir.create(file.path(QC_dir, "flowAI"))
+  dir.create(file.path(QC_dir, "PeacoQC"))
+}
+fs_AI <- flowCore::fsApply(flowSet, function(ff){
+  resQC_AI <- flow_auto_qc(fcsfiles = ff,
+                           folder_results = file.path(QC_dir, paste("flowAI", gsub(".fcs", " Folder", ff@description$GUID), sep = "/")),
+                           output = 1)
+  return(resQC_AI)
+})
+
+fs_PeacoQC <- flowCore::fsApply(flowSet, function(ff){
+  resQC <- PeacoQC(ff = ff,
+                   determine_good_cells = "all",
+                   channels = c(6:15),
+                   plot = TRUE,
+                   output_folder = file.path(QC_dir, "PeacoQC"))
+  ff <- ff[resQC$GoodCells, ]
+  return(ff)
+})
+
+flowSet[[1]]@description$`$CYT`
+flowSet[[1]]@description$`$CYT` <- "FACS"
+
+chs_of_interest <- colnames(flowSet)[10:35]
+plot_aggregate(flowSet, channels = chs_of_interest, output_image = "FCSpreNorm.png")
+plot_aggregate(fs_AI, channels = chs_of_interest, output_image = "FCSpreNormpostAI.png")
+plot_aggregate(fs_PeacoQC, channels = chs_of_interest, output_image = "FCSpreNormpostPeacoQC.png")
+normFlowSet <- warpSet(flowSet, stains = c("TCF1","Eomes","Tbet"))
+plot_aggregate(normFlowSet, channels = chs_of_interest, output_image = "FCSpostNorm.png")
+
+# try flowAI, no norm needed
+
+fs_AI[[1]]@description$`$CYT`
+# fs_AI[[1]]@description$`$CYT` <- "FACS"
+
+# prepData - BM vs PB!
+colnames(sample_md_PBvsBM)
+all(colnames(fs_AI) == panel_md$fcs_colname)
+
+sce <- CATALYST::prepData(fs_AI, panel = panel_md, md = sample_md_PBvsBM, transform = FALSE)
+assay(sce, "exprs") <- assay(sce, "counts")
+assays(sce)
+
+CATALYST::pbMDS(sce, color_by = "condition", features = type_markers(sce), fun = "median")
+
+p <- plotExprs(sce, features = NULL, color_by = "condition")
+p$facet$params$ncol <- 9
+p
+
+n_events <- min(n_cells(sce))
+n_events
+n_cells(sce)
+plotCounts(sce, group_by = "sample_id", color_by = "condition")
+
+plotNRS(sce, features = type_markers(sce), color_by = "condition")
+
+saveRDS(sce, file = "SCE_BMvsPB.rds")
+
+
+
+
 
 
