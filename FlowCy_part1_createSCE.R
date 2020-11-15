@@ -145,14 +145,15 @@ plot_aggregate(fs_PeacoQC, channels = chs_of_interest, output_image = "FCSpreNor
 normFlowSet <- warpSet(flowSet, stains = c("TCF1","Eomes","Tbet"))
 plot_aggregate(normFlowSet, channels = chs_of_interest, output_image = "FCSpostNorm.png")
 
-# try flowAI, no norm needed
+# try fs_AI, no norm needed
 
 fs_AI[[1]]@description$`$CYT`
-# fs_AI[[1]]@description$`$CYT` <- "FACS"
+fs_AI[[1]]@description$`$CYT` <- "FACS"
 
 # prepData - BM vs PB!
 colnames(sample_md_PBvsBM)
 all(colnames(fs_AI) == panel_md$fcs_colname)
+flowSet[[1]]@description$`$CYT`
 
 sce <- CATALYST::prepData(fs_AI, panel = panel_md, md = sample_md_PBvsBM, transform = FALSE)
 assay(sce, "exprs") <- assay(sce, "counts")
