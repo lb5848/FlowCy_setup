@@ -83,3 +83,5 @@ plotExprHeatmap(sce, features = type_markers(sce), k = "meta12", by = "cluster_i
 
 CATALYST::plotDR(sce, dr = "UMAP", color_by = "meta12", facet_by = "condition")
 CATALYST::plotDR(sce, dr = "UMAP", color_by = c("CD127", "CD69"), facet_by = "condition")
+plotDR(sce, dr = "UMAP", color_by = "meta12", facet_by = "condition") +  
+  geom_density2d(binwidth = 0.006, colour = "black")
