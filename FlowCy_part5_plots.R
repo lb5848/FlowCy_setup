@@ -52,16 +52,33 @@ CATALYST::pbMDS(sce, color_by = "condition", features = type_markers(sce), fun =
 plotExprHeatmap(sce, features = type_markers(sce), k = "cluster_annotation", 
                 by = "cluster_id", scale = "first", bars = TRUE, perc = TRUE)
 
-
 # set outputPath
-outputPath <- paste(getwd(), "output", sep = "/")
-dir.create(outputPath)
+plotsPath <- paste(getwd(), "plots", sep = "/")
+dir.create(plotsPath)
 
-# save single fcs_files by cluster and by condition
-# sce$cluster_annotation <- cluster_ids(sce, "cluster_annotation")
-by_cluster <- sce2fcs(sce, split_by = "cluster_annotation", keep_cd = TRUE, keep_dr = FALSE, assay = "counts")
-write.flowSet(by_cluster, outdir = outputPath, filename = "bycluster")
-merged <- sce2fcs(sce, split_by = NULL, keep_cd = TRUE, keep_dr = FALSE, assay = "counts")
-write.FCS(merged, filename = paste(outputPath, "merged.fcs", sep = "/"))
-by_condition <- sce2fcs(sce, split_by = "condition", keep_cd = TRUE, keep_dr = FALSE, assay = "counts")
-write.flowSet(by_condition, outdir = outputPath, filename = "bycondition")
+display.brewer.all(colorblindFriendly = FALSE)
+
+plotDiffHeatmap(sce, da, top_n = 12, all = TRUE, fdr = FDR_cutoff)
+stat_test <- as.tibble(da)
+p.adj.signif <- c(rep("ns", 4), "*", rep("ns", 2), "**", "***", "ns", "***", "****")
+group1 <- (rep("BM", nrow(stat_test)))
+group2 <- (rep("PB", nrow(stat_test)))
+y.position <- c(50, 13, 80, 50,
+                35, 30, 5, 0.5,
+                2.5, 11, 10, 3)
+stat.test <- cbind(stat_test, group1, group2, p.adj.signif, y.position)
+stat.test <- as.tibble(stat.test)
+bxp <- plotAbundances(sce, k = "cluster_annotation", by = "cluster_id", group_by = "condition")
+bxp <- bxp + stat_pvalue_manual(stat.test, label = "p.adj.signif", tip.length = 0.01, size = 2.5)
+bxp
+ggsave("abundances_stat.svg", plot = last_plot(), dpi = 300)
+
+
+svg("ExprHeatmap.svg", width = 7, height = 14)
+plotExprHeatmap(sce, features = type_markers(sce), k = "cluster_annotation", by = "cluster_id",  fun = "median",
+                scale = "first", bars = FALSE, perc = FALSE)
+dev.off()
+
+plotDR(sce, dr = "UMAP", color_by = "cluster_annotation", facet_by = "condition") + 
+  geom_density2d(binwidth = 0.006, colour = "black")
+ggsave("UMAP_wContours.svg", plot = last_plot())

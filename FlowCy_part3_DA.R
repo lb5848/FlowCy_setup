@@ -59,6 +59,7 @@ colnames(annotation_table) <- c("meta12", "Clusters")
 annotation_table$Clusters <- factor(annotation_table$Clusters)
 sce <- mergeClusters(sce, k = "meta12", 
                      table = annotation_table, id = "cluster_annotation", overwrite = TRUE)
+sce$cluster_annotation <- cluster_ids(sce, "cluster_annotation")
 # filtered_sce <- filterSCE(sce, cluster_id %in% c(paste0("C", c(1:12))), k = "cluster_annotation")
 
 # store original_sce
